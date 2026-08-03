@@ -1,0 +1,25 @@
+# Build artifacts — regenerable from the raw CSVs by running the scripts in
+# order (~1 minute total). Parquet is binary, so git cannot delta-compress it;
+# committing it would add the full ~38 MB to history on every rebuild.
+data/interim/
+data/processed/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+
+# Environments
+.venv/
+venv/
+env/
+
+# Excel lock files (created while a workbook is open)
+~$*.xlsx
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
