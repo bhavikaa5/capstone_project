@@ -34,21 +34,22 @@ Live validation (Kite Connect) ──► Integrity dashboard
 |---|---|---|
 | 1 | Data ingestion & cleaning | **Done** — [docs/11](docs/11_Data_Step1.md) |
 | 2 | Feature engineering (5 blocks) | **Done** — [docs/13](docs/13_Features_Step2.md) |
-| 3 | HMM regime labelling | Not started |
+| 3 | HMM regime labelling | **Done** — [docs/14](docs/14_Regimes_Step3.md) |
 | 4 | Model training (3 architectures) | Not started |
 | 5 | Optuna tuning | Not started |
 | 6 | Evaluation & model selection | Not started |
 | 7 | Live validation (Kite Connect) | Not started |
 | 8 | Integrity dashboard | Not started |
 
-76 tests currently passing.
+100 tests currently passing.
 
 ## Quick start
 
 ```bash
-pip install pandas numpy pyarrow openpyxl matplotlib scikit-learn ta pytest
+pip install pandas numpy pyarrow openpyxl matplotlib scikit-learn ta hmmlearn pytest
 python scripts/01_prepare_data.py      # raw CSV  -> data/interim/
 python scripts/02_build_features.py    # interim  -> data/processed/ + reports/
+python scripts/03_label_regimes.py     # features -> regimes + models/
 python -m pytest tests/ -q
 ```
 
@@ -65,11 +66,14 @@ src/
     base.py              Wilder RMA, true range, crossover, warm-start
     rsi.py macd.py atr.py adx.py bollinger.py
     pipeline.py          assembles all five; model_feature_columns()
+  regimes/hmm.py         step 3: Gaussian HMM, causal regime posteriors
 scripts/
   01_prepare_data.py     step 1
   02_build_features.py   step 2 (all blocks)  -> reports/02_features.xlsx
   02a_rsi_features.py    step 2, RSI only (superseded, kept for reference)
-tests/                   76 tests
+  03_label_regimes.py    step 3                -> reports/03_regimes.xlsx
+models/                  frozen regime_hmm.pkl (step 4 loads, never refits)
+tests/                   100 tests
 docs/                    design notes, one per stage
 reports/                 generated audit, workbook and figures
 ```
@@ -110,6 +114,12 @@ Each is documented with its evidence in `docs/`:
 - **Warm-starting, not leakage.** The test split is seeded from the last 1,250
   train bars, which are then discarded. Past into future is correct; the code
   raises if the seed overlaps the target.
+- **Regime labels must be causal.** `hmmlearn`'s `predict()` runs Viterbi over
+  the whole sequence, so bar *t*'s state depends on bars *t+1..T*. It disagrees
+  with the causal forward-pass label on 8.0% of bars. The pipeline writes
+  filtered posteriors only. ([docs/14](docs/14_Regimes_Step3.md))
+- **BIC does not choose k** at this sample size — it falls monotonically through
+  k=10. k=4 is fixed on interpretability and validated behaviourally instead.
 
 ## Note on `docs/01`–`docs/10`
 
