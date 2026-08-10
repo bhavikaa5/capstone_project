@@ -35,21 +35,22 @@ Live validation (Kite Connect) ──► Integrity dashboard
 | 1 | Data ingestion & cleaning | **Done** — [docs/11](docs/11_Data_Step1.md) |
 | 2 | Feature engineering (5 blocks) | **Done** — [docs/13](docs/13_Features_Step2.md) |
 | 3 | HMM regime labelling | **Done** — [docs/14](docs/14_Regimes_Step3.md) |
-| 4 | Model training (3 architectures) | Not started |
+| 4 | Model training (3 architectures) | **Done** — [docs/15](docs/15_Models_Step4.md) |
 | 5 | Optuna tuning | Not started |
 | 6 | Evaluation & model selection | Not started |
 | 7 | Live validation (Kite Connect) | Not started |
 | 8 | Integrity dashboard | Not started |
 
-100 tests currently passing.
+127 tests currently passing.
 
 ## Quick start
 
 ```bash
-pip install pandas numpy pyarrow openpyxl matplotlib scikit-learn ta hmmlearn pytest
+pip install pandas numpy pyarrow openpyxl matplotlib scikit-learn ta hmmlearn tensorflow pytest
 python scripts/01_prepare_data.py      # raw CSV  -> data/interim/
 python scripts/02_build_features.py    # interim  -> data/processed/ + reports/
 python scripts/03_label_regimes.py     # features -> regimes + models/
+python scripts/04_train_models.py      # trains 3 architectures (~40 min, CPU)
 python -m pytest tests/ -q
 ```
 
@@ -67,13 +68,18 @@ src/
     rsi.py macd.py atr.py adx.py bollinger.py
     pipeline.py          assembles all five; model_feature_columns()
   regimes/hmm.py         step 3: Gaussian HMM, causal regime posteriors
+  models/
+    dataset.py           step 4: target, windowing, purged split, scaler
+    architectures.py     LSTM, CNN-BiLSTM-Attention, Transformer
+    evaluate.py          metrics, baselines, cost sensitivity
 scripts/
   01_prepare_data.py     step 1
   02_build_features.py   step 2 (all blocks)  -> reports/02_features.xlsx
   02a_rsi_features.py    step 2, RSI only (superseded, kept for reference)
   03_label_regimes.py    step 3                -> reports/03_regimes.xlsx
-models/                  frozen regime_hmm.pkl (step 4 loads, never refits)
-tests/                   100 tests
+  04_train_models.py     step 4                -> reports/04_models.xlsx
+models/                  frozen regime_hmm.pkl + trained *.keras
+tests/                   127 tests
 docs/                    design notes, one per stage
 reports/                 generated audit, workbook and figures
 ```
@@ -120,6 +126,14 @@ Each is documented with its evidence in `docs/`:
   filtered posteriors only. ([docs/14](docs/14_Regimes_Step3.md))
 - **BIC does not choose k** at this sample size — it falls monotonically through
   k=10. k=4 is fixed on interpretability and validated behaviourally instead.
+- **63% accuracy is not the achievement it looks like.** Persistence — "the next
+  bar goes the same way as this one" — already scores 61.41%, because intraday
+  lag-1 return autocorrelation is +0.25. Always quote lift over persistence.
+  ([docs/15](docs/15_Models_Step4.md))
+- **The classification edge is not tradeable.** The signal breaks even at 5.70
+  bps per position change and flips 12.6 times per session; real Nifty
+  round-trip cost exceeds that. Gross return without cost sensitivity is the
+  most misleading number this project could publish.
 
 ## Note on `docs/01`–`docs/10`
 
