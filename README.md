@@ -41,7 +41,7 @@ Live validation (Kite Connect) ──► Integrity dashboard
 | 7 | Live validation (Kite Connect) | Not started |
 | 8 | Integrity dashboard | Not started |
 
-127 tests currently passing.
+128 tests currently passing.
 
 ## Quick start
 
@@ -79,7 +79,7 @@ scripts/
   03_label_regimes.py    step 3                -> reports/03_regimes.xlsx
   04_train_models.py     step 4                -> reports/04_models.xlsx
 models/                  frozen regime_hmm.pkl + trained *.keras
-tests/                   127 tests
+tests/                   128 tests
 docs/                    design notes, one per stage
 reports/                 generated audit, workbook and figures
 ```
