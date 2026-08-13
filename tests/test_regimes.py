@@ -269,3 +269,25 @@ def test_every_regime_is_actually_used(labelled):
     share = labelled["regime"].value_counts(normalize=True)
     assert set(share.index) == set(REGIME_NAMES)
     assert share.min() > 0.02      # no vestigial state
+
+
+def test_shipped_model_was_fit_on_train_only(model, train, test_split):
+    """The HMM must be fit on TRAIN alone; test is only decoded by it.
+
+    Checked via the scaler rather than the HMM parameters: `mean_`/`std_` are a
+    deterministic function of exactly the rows used for fitting, with no EM in
+    between, so this is both instant and unambiguous. Fitting on train+test
+    moves the scaler by ~0.15, far above any floating-point noise.
+    """
+    train_only = RegimeModel()
+    both = RegimeModel()
+    for target, frame in ((train_only, train),
+                          (both, pd.concat([train, test_split], ignore_index=True))):
+        usable = frame[target.features].notna().all(axis=1) & ~frame["is_warmup"].astype(bool)
+        raw = frame.loc[usable, target.features].to_numpy(dtype="float64")
+        target.mean_, target.std_ = raw.mean(axis=0), raw.std(axis=0)
+
+    np.testing.assert_allclose(model.mean_, train_only.mean_, atol=1e-12)
+    np.testing.assert_allclose(model.std_, train_only.std_, atol=1e-12)
+    assert np.abs(model.mean_ - both.mean_).max() > 1e-3, \
+        "shipped scaler matches a train+test fit — test data leaked into fitting"

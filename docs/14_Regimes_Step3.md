@@ -50,6 +50,34 @@ are documented as such. Two tests enforce the distinction:
   smoothed posteriors before it. Without this counterexample the first test
   could pass trivially.
 
+## Fit on the training set only
+
+`RegimeModel().fit(train)` receives the training frame and nothing else. The
+test split is transformed by the frozen scaler and decoded by the frozen model —
+it never contributes a single row to fitting.
+
+Verified empirically rather than asserted. Comparing the shipped
+`models/regime_hmm.pkl` against two refits:
+
+| Shipped model vs… | transition matrix | means | scaler |
+|---|---|---|---|
+| **refit on train only** | 1.3e-09 | 5.4e-11 | **0.0** |
+| refit on train + test | 6.3e-02 | 1.3e+00 | 1.5e-01 |
+
+It reproduces the train-only fit to floating-point noise and is nowhere near
+what a train+test fit produces. **55,318 train rows used for fitting; 0 test
+rows.**
+
+`test_shipped_model_was_fit_on_train_only` locks this in. It checks the *scaler*
+rather than the HMM parameters: `mean_`/`std_` are a deterministic function of
+exactly the rows used for fitting, with no EM in between, so the check is both
+instant and unambiguous.
+
+The one place train data does reach the test split is the 250-bar warm-up tail
+prepended before decoding, which is then discarded. That feeds *past* into
+*future* — the correct direction — and `attach_regimes` raises if the seed does
+not end strictly before the target begins.
+
 ## Features fed to the HMM
 
 Four, chosen for near-orthogonality (max pairwise |corr| = 0.23):
