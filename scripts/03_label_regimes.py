@@ -313,12 +313,22 @@ def write_readme(ws, model: RegimeModel, meta: dict, checks: list) -> None:
         r += 1
 
 
-def style_sheet(ws, n_rows: int, n_cols: int, first_width: int = 20) -> None:
+def style_sheet(ws, n_rows: int, n_cols: int, first_width: int = 20,
+                columns: list[str] | None = None) -> None:
     for j in range(1, n_cols + 1):
         c = ws.cell(1, j)
         c.font, c.fill = HEADER_FONT, HEADER_FILL
         c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         ws.column_dimensions[get_column_letter(j)].width = first_width if j == 1 else 15
+
+    # Show the bar's clock time only. The calendar date lives in `session_date`
+    # in the same sheet, so nothing is lost — this is a display format, not a
+    # truncation, and the cell stays a real datetime so sorting still works.
+    for j, name in enumerate(columns or [], start=1):
+        if name == "timestamp":
+            for i in range(2, n_rows + 2):
+                ws.cell(i, j).number_format = "hh:mm"
+
     ws.freeze_panes = "B2"
     ws.row_dimensions[1].height = 30
     if n_rows:
@@ -405,7 +415,7 @@ def main() -> None:
             w = wb[name]
             style_sheet(w, w.max_row - 1, w.max_column, width)
         for split, df in frames.items():
-            style_sheet(wb[f"Regimes_{split}"], len(df), len(keep), 20)
+            style_sheet(wb[f"Regimes_{split}"], len(df), len(keep), 20, columns=keep)
 
     print(f"excel  -> {xlsx.relative_to(config.PROJECT_ROOT)} "
           f"({xlsx.stat().st_size / 1e6:.1f} MB)")
